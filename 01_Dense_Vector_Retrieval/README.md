@@ -121,7 +121,7 @@ What does a similarity score help you understand, and what does it not prove by 
 
 ##### ✅ Answer:
 A) Similarity score helps me to understand the degree to which two vectors (sentence vectors , document vectors, word vectors) are similar to each other contextually (it may not convey similarity in the exact meaning).
-For example, king and queen are contextually similar in their usage with a high similarity score than king vs banana, but (king, queen) are not the same in their meaning. ⛹️‍♀️⛹️‍♂️⛹️
+For example, king and queen are contextually similar in their usage with a high similarity score than king vs banana, but (king, queen) are not the same in their meaning. 
 king <> queen                  score=0.591
 king <> banana                 score=0.310
 B) However, the score by itself does not prove anything unless it is compared to others scores in the Vector DB. 😒 So we rank the similairty scores and that gives us an idea of the most contextually similarity scores  
@@ -167,6 +167,7 @@ Improve retrieval quality by changing one or more of:
 Document what changed and whether retrieval improved.
 
 ##### Settings Changed:
+
 chunk size, query, chunk overlap
 -
 
