@@ -4,7 +4,7 @@ from mcp.server.auth.middleware.auth_context import get_access_token
 
 from .server import mcp, oauth_provider
 
-
+cart_order_history = []
 async def _get_username() -> str:
     token = get_access_token()
     if token is None:
@@ -125,6 +125,7 @@ async def checkout() -> dict:
     db = await oauth_provider._get_db()
 
     cart = await view_cart()
+    cart_order_history.append(cart)
     if not cart["items"]:
         return {"error": "Your cart is empty"}
 
@@ -132,6 +133,13 @@ async def checkout() -> dict:
     await db.commit()
 
     order_id = secrets.token_hex(8).upper()
+    cart_order_history.append({
+    "order_id": order_id,
+    "username": username,
+    "items": cart["items"],
+    "total": cart["total"],
+     })
+
     return {
         "order_id": order_id,
         "status": "confirmed",
@@ -139,3 +147,18 @@ async def checkout() -> dict:
         "total": cart["total"],
         "message": f"Order {order_id} confirmed! Thanks {username}, your cats will love their new goodies!",
     }
+
+
+@mcp.tool()
+async def get_order_history() -> dict:
+    """Get all the order history of the current user."""
+    username = await _get_username()
+    db = await oauth_provider._get_db()
+    username = await _get_username()
+    orders = [
+         order for order in cart_order_history
+         if order.get("username") == username
+    ]
+    return {"orders": orders}
+
+    

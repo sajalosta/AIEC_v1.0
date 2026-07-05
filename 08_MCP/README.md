@@ -153,17 +153,23 @@ Follow these steps to prepare and submit your homework assignment:
 
 Why is OAuth important for MCP servers, and what security considerations should you keep in mind when exposing tools to AI clients?
 
-#### Answer
+OAuth ensures that not just anybody can access MCP server and tools it exposes without authentication.
+If MCPServers dont require authentication then the tool gets exposed to bad actors and then our agent inherits bad stuff.
 
-_(insert your answer here)_
+Security considerations to expose tools:-
+1) Ask the user to authorize the request whenever it sends out a request to access a tool in the server
+2) issue a token to the MCPClient which it will use to be authenticated for every successive request to the tool
+3) refresh the tokens periodically to the MCPClient so we eliminate the issue of continuous use of tools incase there is a bad action prevalent.
+4) I also feel that there should be a degree of monitoring if the tool is accessed in a manner which is not typical so we can eliminate bad action
+
 
 ### Question #2
 
 What is Streamable HTTP transport in MCP, and why might you expose a server publicly with OAuth instead of using a local stdio connection?
 
-#### Answer
+Streamable HTTP transport does OAuth for MCPClient, supports multiple clients, supports streaming messages.
+I will expose a server publicly with OAuth instead of using a local stdio connection as stdio doesn't support streaming messages. With an agent needing async and delayed /multiple responses from the server, STDIO won't be of use. Also, even if I use a local STDIO connection, what if my network is hacked? I won't have an OAuth for my individual application and I don't need that. 
 
-_(insert your answer here)_
 
 ## Activity 1: Extend the MCP Server
 
