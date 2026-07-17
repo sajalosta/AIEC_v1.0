@@ -1,0 +1,132 @@
+<svg width="680" height="1510" viewBox="0 0 680 1510" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif">
+<defs>
+<marker id="aG" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#5F5E5A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+<marker id="aC" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#D85A30" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+<marker id="aN" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#639922" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+<marker id="aT" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#1D9E75" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+<marker id="aP" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#D4537E" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+</defs>
+<rect x="0" y="0" width="680" height="1510" fill="#FFFFFF"/>
+
+<rect x="290" y="20" width="100" height="40" rx="6" fill="#FFFFFF" stroke="#B4B2A9"/>
+<text x="340" y="45" text-anchor="middle" font-size="14" font-weight="500" fill="#2C2C2A">User</text>
+<line x1="370" y1="60" x2="370" y2="90" stroke="#5F5E5A" stroke-width="1" marker-end="url(#aG)"/>
+<line x1="310" y1="90" x2="310" y2="60" stroke="#5F5E5A" stroke-width="1" marker-end="url(#aG)"/>
+
+<rect x="270" y="90" width="140" height="48" rx="6" fill="#EEEDFE" stroke="#534AB7"/>
+<text x="340" y="110" text-anchor="middle" font-size="14" font-weight="500" fill="#3C3489">Main LLM</text>
+<text x="340" y="128" text-anchor="middle" font-size="12" fill="#534AB7">user-facing</text>
+<line x1="340" y1="138" x2="340" y2="200" stroke="#5F5E5A" stroke-width="1" marker-end="url(#aG)"/>
+
+<rect x="60" y="170" width="540" height="230" rx="8" fill="none" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="6 5"/>
+<text x="80" y="196" font-size="14" font-weight="500" fill="#2C2C2A">Orchestrator agent</text>
+
+<rect x="250" y="200" width="180" height="98" rx="6" fill="#EEEDFE" stroke="#534AB7"/>
+<text x="340" y="222" text-anchor="middle" font-size="14" font-weight="500" fill="#3C3489">Orchestrator LLM</text>
+<text x="340" y="244" text-anchor="middle" font-size="12" fill="#534AB7">both OK? &#8594; proceed</text>
+<text x="340" y="262" text-anchor="middle" font-size="12" fill="#534AB7">build fail &#8594; stop,</text>
+<text x="340" y="280" text-anchor="middle" font-size="12" fill="#534AB7">log to Main LLM</text>
+
+<line x1="290" y1="298" x2="170" y2="330" stroke="#5F5E5A" stroke-width="1" marker-end="url(#aG)"/>
+<line x1="190" y1="330" x2="315" y2="298" stroke="#5F5E5A" stroke-width="1" marker-end="url(#aG)"/>
+<line x1="375" y1="298" x2="450" y2="330" stroke="#5F5E5A" stroke-width="1" marker-end="url(#aG)"/>
+<line x1="475" y1="330" x2="400" y2="298" stroke="#5F5E5A" stroke-width="1" marker-end="url(#aG)"/>
+
+<rect x="80" y="330" width="150" height="48" rx="6" fill="#F1EFE8" stroke="#5F5E5A"/>
+<text x="155" y="350" text-anchor="middle" font-size="14" font-weight="500" fill="#444441">Model builder</text>
+<text x="155" y="368" text-anchor="middle" font-size="12" fill="#5F5E5A">tool &#183; Verilator</text>
+<rect x="390" y="330" width="150" height="48" rx="6" fill="#F1EFE8" stroke="#5F5E5A"/>
+<text x="465" y="350" text-anchor="middle" font-size="14" font-weight="500" fill="#444441">Ingestion</text>
+<text x="465" y="368" text-anchor="middle" font-size="12" fill="#5F5E5A">tool &#183; PDF parse</text>
+
+<path d="M430 225 H570 V114 H410" fill="none" stroke="#D85A30" stroke-width="1" stroke-dasharray="4 4" marker-end="url(#aC)"/>
+<text x="438" y="216" font-size="12" fill="#993C1D">build failed + log</text>
+
+<line x1="465" y1="378" x2="465" y2="430" stroke="#5F5E5A" stroke-width="1" marker-end="url(#aG)"/>
+<rect x="430" y="430" width="150" height="48" rx="6" fill="#E1F5EE" stroke="#0F6E56"/>
+<text x="505" y="450" text-anchor="middle" font-size="14" font-weight="500" fill="#085041">Vector store</text>
+<text x="505" y="468" text-anchor="middle" font-size="12" fill="#0F6E56">golden records</text>
+
+<line x1="340" y1="298" x2="340" y2="540" stroke="#5F5E5A" stroke-width="1" marker-end="url(#aG)"/>
+
+<rect x="60" y="510" width="540" height="180" rx="8" fill="none" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="6 5"/>
+<text x="80" y="536" font-size="14" font-weight="500" fill="#2C2C2A">Test generator agent</text>
+
+<rect x="70" y="560" width="150" height="48" rx="6" fill="#F1EFE8" stroke="#5F5E5A"/>
+<text x="145" y="580" text-anchor="middle" font-size="14" font-weight="500" fill="#444441">Test gen tools</text>
+<text x="145" y="598" text-anchor="middle" font-size="12" fill="#5F5E5A">&#215;4 parallel</text>
+<line x1="250" y1="575" x2="220" y2="575" stroke="#5F5E5A" stroke-width="1" marker-end="url(#aG)"/>
+<line x1="220" y1="593" x2="250" y2="593" stroke="#5F5E5A" stroke-width="1" marker-end="url(#aG)"/>
+
+<rect x="250" y="540" width="180" height="108" rx="6" fill="#EEEDFE" stroke="#534AB7"/>
+<text x="340" y="562" text-anchor="middle" font-size="14" font-weight="500" fill="#3C3489">TestGenRouterLLM</text>
+<text x="340" y="584" text-anchor="middle" font-size="12" fill="#534AB7">n left? call min(n, 4)</text>
+<text x="340" y="602" text-anchor="middle" font-size="12" fill="#534AB7">gen log: pass / fail?</text>
+<text x="340" y="620" text-anchor="middle" font-size="12" fill="#534AB7">pass &#8594; TestRun</text>
+<text x="340" y="638" text-anchor="middle" font-size="12" fill="#534AB7">fail &#8594; reporter</text>
+
+<line x1="430" y1="600" x2="636" y2="600" stroke="#D85A30" stroke-width="1" stroke-dasharray="4 4"/>
+
+<line x1="340" y1="648" x2="340" y2="780" stroke="#639922" stroke-width="1" marker-end="url(#aN)"/>
+<text x="352" y="706" font-size="12" fill="#3B6D11">each pass</text>
+
+<rect x="60" y="750" width="540" height="180" rx="8" fill="none" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="6 5"/>
+<text x="80" y="776" font-size="14" font-weight="500" fill="#2C2C2A">TestRun agent</text>
+
+<rect x="70" y="800" width="150" height="48" rx="6" fill="#F1EFE8" stroke="#5F5E5A"/>
+<text x="145" y="820" text-anchor="middle" font-size="14" font-weight="500" fill="#444441">Test run tools</text>
+<text x="145" y="838" text-anchor="middle" font-size="12" fill="#5F5E5A">&#215;4 parallel</text>
+<line x1="250" y1="815" x2="220" y2="815" stroke="#5F5E5A" stroke-width="1" marker-end="url(#aG)"/>
+<line x1="220" y1="833" x2="250" y2="833" stroke="#5F5E5A" stroke-width="1" marker-end="url(#aG)"/>
+
+<rect x="250" y="780" width="180" height="108" rx="6" fill="#EEEDFE" stroke="#534AB7"/>
+<text x="340" y="802" text-anchor="middle" font-size="14" font-weight="500" fill="#3C3489">TestRunRouterLLM</text>
+<text x="340" y="824" text-anchor="middle" font-size="12" fill="#534AB7">n left? call min(n, 4)</text>
+<text x="340" y="842" text-anchor="middle" font-size="12" fill="#534AB7">run log: done?</text>
+<text x="340" y="860" text-anchor="middle" font-size="12" fill="#534AB7">didn't run &#8594; reporter</text>
+<text x="340" y="878" text-anchor="middle" font-size="12" fill="#534AB7">each done &#8594; checking</text>
+
+<line x1="430" y1="840" x2="636" y2="840" stroke="#D85A30" stroke-width="1" stroke-dasharray="4 4"/>
+
+<line x1="340" y1="888" x2="340" y2="1010" stroke="#639922" stroke-width="1" marker-end="url(#aN)"/>
+<text x="352" y="956" font-size="12" fill="#3B6D11">each done</text>
+
+<rect x="60" y="980" width="540" height="210" rx="8" fill="none" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="6 5"/>
+<text x="80" y="1006" font-size="14" font-weight="500" fill="#2C2C2A">Checking phase</text>
+
+<rect x="250" y="1010" width="180" height="108" rx="6" fill="#EEEDFE" stroke="#534AB7"/>
+<text x="340" y="1032" text-anchor="middle" font-size="14" font-weight="500" fill="#3C3489">CheckerLLM &#215;4</text>
+<text x="340" y="1054" text-anchor="middle" font-size="12" fill="#534AB7">golden rec + test log</text>
+<text x="340" y="1072" text-anchor="middle" font-size="12" fill="#534AB7">AI grade &#8594; verdict</text>
+<text x="340" y="1090" text-anchor="middle" font-size="12" fill="#534AB7">verdict + tuple &#8594; RAGAS</text>
+
+<path d="M525 478 V492 H612 V1035 H430" fill="none" stroke="#1D9E75" stroke-width="1" stroke-dasharray="4 4" marker-end="url(#aT)"/>
+
+<line x1="340" y1="1118" x2="340" y2="1210" stroke="#5F5E5A" stroke-width="1" marker-end="url(#aG)"/>
+<text x="352" y="1160" font-size="12" fill="#5F5E5A">verdicts + tuples</text>
+
+<rect x="270" y="1210" width="140" height="48" rx="6" fill="#FBEAF0" stroke="#993556"/>
+<text x="340" y="1230" text-anchor="middle" font-size="14" font-weight="500" fill="#72243E">RAGAS</text>
+<text x="340" y="1248" text-anchor="middle" font-size="12" fill="#993556">scores &#8594; trust gate</text>
+
+<line x1="340" y1="1258" x2="340" y2="1290" stroke="#5F5E5A" stroke-width="1" marker-end="url(#aG)"/>
+
+<path d="M636 600 V1314 H410" fill="none" stroke="#D85A30" stroke-width="1" stroke-dasharray="4 4" marker-end="url(#aC)"/>
+
+<rect x="270" y="1290" width="140" height="48" rx="6" fill="#FAECE7" stroke="#993C1D"/>
+<text x="340" y="1310" text-anchor="middle" font-size="14" font-weight="500" fill="#712B13">Reporter agent</text>
+<text x="340" y="1328" text-anchor="middle" font-size="12" fill="#993C1D">compiles report</text>
+
+<line x1="340" y1="1338" x2="340" y2="1380" stroke="#5F5E5A" stroke-width="1" marker-end="url(#aG)"/>
+<rect x="250" y="1380" width="180" height="48" rx="6" fill="#F1EFE8" stroke="#5F5E5A"/>
+<text x="340" y="1400" text-anchor="middle" font-size="14" font-weight="500" fill="#444441">Final report</text>
+<text x="340" y="1418" text-anchor="middle" font-size="12" fill="#5F5E5A">to user via Main LLM</text>
+
+<rect x="60" y="1450" width="14" height="14" rx="3" fill="#EEEDFE" stroke="#534AB7"/><text x="82" y="1461" font-size="12" fill="#5F5E5A">LLM / agent</text>
+<rect x="190" y="1450" width="14" height="14" rx="3" fill="#F1EFE8" stroke="#5F5E5A"/><text x="212" y="1461" font-size="12" fill="#5F5E5A">tool</text>
+<rect x="280" y="1450" width="14" height="14" rx="3" fill="#E1F5EE" stroke="#0F6E56"/><text x="302" y="1461" font-size="12" fill="#5F5E5A">data store</text>
+<rect x="400" y="1450" width="14" height="14" rx="3" fill="#FBEAF0" stroke="#993556"/><text x="422" y="1461" font-size="12" fill="#5F5E5A">eval gate</text>
+<line x1="60" y1="1485" x2="100" y2="1485" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="3 3"/><text x="108" y="1489" font-size="12" fill="#5F5E5A">agent boundary</text>
+<line x1="240" y1="1485" x2="280" y2="1485" stroke="#D85A30" stroke-width="1" stroke-dasharray="4 4"/><text x="288" y="1489" font-size="12" fill="#5F5E5A">failure path</text>
+<line x1="400" y1="1485" x2="440" y2="1485" stroke="#639922" stroke-width="1"/><text x="448" y="1489" font-size="12" fill="#5F5E5A">pass / done</text>
+</svg>

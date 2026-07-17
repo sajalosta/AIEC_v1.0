@@ -1,0 +1,21 @@
+{
+  "dependencies": [
+    "."
+  ],
+  "env": ".env",
+  "graphs": {
+    "fifo_verification": "app.graph:graph"
+  },
+  "assistants": {
+    "verifier": {
+      "graph_id": "fifo_verification",
+      "name": "FIFO Verification Pipeline",
+      "description": "AI-checked ASIC verification: features in, judged report out."
+    },
+    "agent": {
+      "graph_id": "fifo_verification",
+      "name": "FIFO Verification Agent",
+      "description": "Chat entry: send the features to test; receive the judged report."
+    }
+  }
+}

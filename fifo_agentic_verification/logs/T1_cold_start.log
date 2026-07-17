@@ -1,0 +1,5 @@
+[TST] test=T1_cold_start dut=snix_sync_fifo data_width=32 fifo_depth=16
+[TST] test=T1_cold_start status=completed
+[WIN] cycles=0..6 events=1 (final)
+[EVT] t=25000 cycle=2 pin=rst_n   0 -> 1
+[MON] total_cycles=6

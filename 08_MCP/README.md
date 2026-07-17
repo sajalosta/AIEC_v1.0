@@ -168,12 +168,16 @@ Security considerations to expose tools:-
 What is Streamable HTTP transport in MCP, and why might you expose a server publicly with OAuth instead of using a local stdio connection?
 
 Streamable HTTP transport does OAuth for MCPClient, supports multiple clients, supports streaming messages.
-I will expose a server publicly with OAuth instead of using a local stdio connection as stdio doesn't support streaming messages. With an agent needing async and delayed /multiple responses from the server, STDIO won't be of use. Also, even if I use a local STDIO connection, what if my network is hacked? I won't have an OAuth for my individual application and I don't need that. 
+I will expose a server publicly with OAuth instead of using a local stdio connection as stdio doesn't support streaming messages. With an agent needing async and delayed /multiple responses from the server, STDIO won't be of use. Also, even if I use a local STDIO connection, what if my network is hacked? I won't have an OAuth for my individual application and I don't need that. Also, I will expose the server publicly so that multiple clients can access it. 
+
 
 
 ## Activity 1: Extend the MCP Server
 
 Add at least one new tool to the cat shop MCP server (e.g., `search_products`, `update_cart_quantity`, or `get_order_history`). Ensure the new tool integrates properly with the existing database and OAuth authentication. Demo the new tool through an MCP client and include it in your Loom video.
+
+
+Added a new tool called "get_order_history" to tools.py. 
 
 ## Advanced Activity: Build a Custom MCP Client
 

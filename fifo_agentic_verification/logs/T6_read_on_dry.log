@@ -1,0 +1,15 @@
+[TST] test=T6_read_on_dry dut=snix_sync_fifo data_width=32 fifo_depth=16
+[TST] test=T6_read_on_dry status=completed
+[WIN] cycles=0..14 events=11 (final)
+[EVT] t=25000 cycle=2 pin=rst_n   0 -> 1
+[EVT] t=35000 cycle=3 pin=rd_en   0 -> 1
+[EVT] t=65000 cycle=6 pin=rd_en   1 -> 0
+[EVT] t=75000 cycle=7 pin=wr_en   0 -> 1
+[EVT] t=75000 cycle=7 pin=wr_data 0x00000000 -> 0x00000077
+[EVT] t=85000 cycle=8 pin=wr_en   1 -> 0
+[EVT] t=85000 cycle=8 flag=empty 1 -> 0
+[EVT] t=95000 cycle=9 pin=rd_en   0 -> 1
+[EVT] t=105000 cycle=10 pin=rd_en   1 -> 0
+[EVT] t=105000 cycle=10 pin=rd_data 0x00000000 -> 0x00000077
+[EVT] t=105000 cycle=10 flag=empty 0 -> 1
+[MON] total_cycles=14

@@ -86,7 +86,7 @@ Two servers run **locally** (the agent API and the frontend), and two things dep
 
 ```bash
 uv sync                            # install Python deps (first time only)
-cp .env.example .env               # then fill in OPENAI_API_KEY and TAVILY_API_KEY
+cp .env.example .env               # then fill in OPENAI_API_KEY and TAVILY_API_KEY 
 uv run langgraph dev               # API at http://localhost:2024 + opens LangGraph Studio
 ```
 
@@ -95,7 +95,7 @@ uv run langgraph dev               # API at http://localhost:2024 + opens LangGr
 ```bash
 cd frontend
 npm install                        # install JS deps (first time only)
-cp .env.local.example .env.local   # defaults already point at http://localhost:2024
+cp .env.local.example .env.local   # defaults already point at http://localhost:2024 (PS: SajOst: I already filled this out and there is no env.local.example or .env.local, there is only a .env file in frontend and oyu fill it with URL of the agent server)
 npm run dev                        # chat UI at http://localhost:3000
 ```
 
@@ -271,7 +271,7 @@ npm install @langchain/react langgraph-nextjs-api-passthrough
 Create `frontend/app/api/[...path]/route.ts`:
 
 ```typescript
-import { initApiPassthrough } from "langgraph-nextjs-api-passthrough";
+`import { initApiPassthrough } from "langgraph-nextjs-api-passthrough";
 
 export const { GET, POST, PUT, PATCH, DELETE, OPTIONS, runtime } =
   initApiPassthrough({
@@ -289,10 +289,15 @@ In a client component (e.g. `frontend/app/page.tsx`), connect to your local prox
 "use client";
 
 import { useStream } from "@langchain/react";
+const apiUrl =
+  typeof window !== "undefined"
+    ? `${window.location.origin}/api`
+    : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api");
 
 export default function ChatPage() {
   const { messages, submit, isLoading } = useStream({
-    apiUrl: process.env.NEXT_PUBLIC_API_URL ?? "/api",
+    //apiUrl: process.env.NEXT_PUBLIC_API_URL ?? "/api",   SajOsta commented this out as per recommendation of agent
+    apiUrl,
     assistantId: "agent",
   });
 
@@ -428,7 +433,9 @@ Why does LangSmith deploy your agent as an API backend only, and why do you stil
 
 #### Answer
 
-_(insert your answer here)_
+Langsmith can only deploy endpoints, not a chat interface. So it deploys as API backend.
+
+The agent takes as input a message from the USER. You need a front end to talk to it. The langgraph STUDIO gives a UI where we can debug the output of the agent and to make sure the backend is behaving okay. BUt this dev version is only for me. I need a front end deployed on vercel so all can talk to it.  
 
 ### Question #2
 
@@ -436,11 +443,11 @@ Why should the LangSmith API key live in a Next.js API route (server-side) inste
 
 #### Answer
 
-_(insert your answer here)_
+The Next.js API route forwards the LANGSMITH API KEY to LANGGRAPH URL. This prevents the browser from seeing it and enables secure key transfer to the backend. Key getting exposed to the browser exposes it to everyone.
 
 ## Activity 1: Build a Helpfulness Loop in Production
 
-Build an `agent_with_helpfulness` graph that adds a post-response helpfulness check: after the agent answers, a judge model decides whether the response is helpful, and if not, the graph loops back for another attempt (with a safe loop limit). Register it in `langgraph.json`, deploy it, then compare LangSmith traces for queries that pass vs. fail the helpfulness check. Does the retry loop behave differently in Studio vs. production?
+Build an `agent_with_helpfulness` graph that adds a post-response helpfulness check: after the agent answers, a judge model decides whether the response is helpful, and if not, the graph loops back for another attempt (with a safe loop limit). Register it in `langgraph.json`, deploy it, then compare LangSmith traces for queries that pass vs. fail the helpfulness check. Does the retry loop behave differently in Studio vs. production?Build an `ag
 
 ## Advanced Activity: Auth and Custom Routes
 

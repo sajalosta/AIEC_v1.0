@@ -1,0 +1,24 @@
+[TST] test=T3_fill_sixteen dut=snix_sync_fifo data_width=32 fifo_depth=16
+[WIN] cycles=0..19 events=20
+[EVT] t=25000 cycle=2 pin=rst_n   0 -> 1
+[EVT] t=35000 cycle=3 pin=wr_en   0 -> 1
+[EVT] t=45000 cycle=4 pin=wr_data 0x00000000 -> 0x00000001
+[EVT] t=45000 cycle=4 flag=empty 1 -> 0
+[EVT] t=55000 cycle=5 pin=wr_data 0x00000001 -> 0x00000002
+[EVT] t=65000 cycle=6 pin=wr_data 0x00000002 -> 0x00000003
+[EVT] t=75000 cycle=7 pin=wr_data 0x00000003 -> 0x00000004
+[EVT] t=85000 cycle=8 pin=wr_data 0x00000004 -> 0x00000005
+[EVT] t=95000 cycle=9 pin=wr_data 0x00000005 -> 0x00000006
+[EVT] t=105000 cycle=10 pin=wr_data 0x00000006 -> 0x00000007
+[EVT] t=115000 cycle=11 pin=wr_data 0x00000007 -> 0x00000008
+[EVT] t=125000 cycle=12 pin=wr_data 0x00000008 -> 0x00000009
+[EVT] t=135000 cycle=13 pin=wr_data 0x00000009 -> 0x0000000a
+[EVT] t=145000 cycle=14 pin=wr_data 0x0000000a -> 0x0000000b
+[EVT] t=155000 cycle=15 pin=wr_data 0x0000000b -> 0x0000000c
+[EVT] t=165000 cycle=16 pin=wr_data 0x0000000c -> 0x0000000d
+[EVT] t=175000 cycle=17 pin=wr_data 0x0000000d -> 0x0000000e
+[EVT] t=185000 cycle=18 pin=wr_data 0x0000000e -> 0x0000000f
+[EVT] t=195000 cycle=19 pin=wr_en   1 -> 0
+[EVT] t=195000 cycle=19 flag=full  0 -> 1
+[TST] test=T3_fill_sixteen status=completed
+[MON] total_cycles=22
