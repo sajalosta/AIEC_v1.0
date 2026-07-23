@@ -128,9 +128,11 @@ Decided to use BM25 as to retreive tests from the test plan document you need to
 Similarly for retrieving RULES, you need to use BM25 as rules also contain certain keywords and you need to match on keywords but you also need multple rules retrieved and context matching becomes important for that and hence used dense retrieval for that! 
 
 How does the performance compare to your original RAG application? Provide results in a table.
+I didn't settle for an inferior retrieval to start off with but picked the most appropriate strategy to start off with BM25 + dense retrieval with RRF. 
+
 Identify and implement change to atleast one other piece of solution. Using the evaluation harness as hard evidence, demonstrate a meaningfully improved response
 
-
+
 
 Task 7: Next Steps
 You are the AI Solutions Engineer. AI Evaluation & Performance Engineer.
