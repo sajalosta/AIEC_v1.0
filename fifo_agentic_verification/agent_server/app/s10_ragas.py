@@ -47,10 +47,10 @@ def build_sync_judge_llm():
         JUDGE_MODEL_NAME,
         provider="openai",
         client=OpenAI(),
-        mode=instructor.Mode.TOOLS,
+        mode=instructor.Mode.JSON,
     )
     # gpt-5.x rejects max_tokens; the current parameter is max_completion_tokens
-    judge.model_args = {"max_completion_tokens": 1024, "max_retries": 3}
+    judge.model_args = {"max_completion_tokens": 4096, "max_retries": 3}
 
     async def agenerate_from_sync(prompt, response_model):
         return await asyncio.to_thread(
@@ -162,7 +162,16 @@ async def _score_all(records: list[CheckRecord]) -> dict:
                 table[f"{metric_name}_mean"] = round(sum(vals) / len(vals), 4)
         summary[name] = table
 
-    retrieval_scorers = [
+    #retrieval_scorers = [
+    #    ("context_precision", lambda r: cp.ascore(
+    #        user_input=r["user_input"], reference=r["reference"],
+    #        retrieved_contexts=r["retrieved_contexts"])),
+    #    ("context_recall", lambda r: cr.ascore(
+    #        user_input=r["user_input"], retrieved_contexts=r["retrieved_contexts"],
+    #        reference=r["reference"])),
+    #]
+ 
+    rules_scorers = [
         ("context_precision", lambda r: cp.ascore(
             user_input=r["user_input"], reference=r["reference"],
             retrieved_contexts=r["retrieved_contexts"])),
@@ -170,6 +179,12 @@ async def _score_all(records: list[CheckRecord]) -> dict:
             user_input=r["user_input"], retrieved_contexts=r["retrieved_contexts"],
             reference=r["reference"])),
     ]
+    testgen_scorers = [
+        ("context_precision", lambda r: cp.ascore(
+            user_input=r["user_input"], reference=r["reference"],
+            retrieved_contexts=r["retrieved_contexts"])),
+    ]
+
     verdict_scorers = [
         ("faithfulness", lambda r: fa.ascore(
             user_input=r["user_input"], response=r["response"],
@@ -178,8 +193,8 @@ async def _score_all(records: list[CheckRecord]) -> dict:
             user_input=r["user_input"], response=r["response"])),
     ]
 
-    await score_table("testgen_retrieval", testgen_rows(), retrieval_scorers)
-    await score_table("rules_retrieval", rules_rows(records), retrieval_scorers)
+    await score_table("testgen_retrieval", testgen_rows(), testgen_scorers)
+    await score_table("rules_retrieval", rules_rows(records), rules_scorers)
     await score_table("verdicts", verdict_rows(records), verdict_scorers)
 
     # reporter contract unchanged: verdict trust scores also at top level

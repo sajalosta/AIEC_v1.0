@@ -1,5 +1,6 @@
 from app.s01_imports import *  # noqa: F401,F403
-
+from dotenv import load_dotenv
+load_dotenv()
 if not os.environ.get("OPENAI_API_KEY"):
     raise RuntimeError("OPENAI_API_KEY missing - set it in agent_server/.env")
 

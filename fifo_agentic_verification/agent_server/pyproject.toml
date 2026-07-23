@@ -14,6 +14,7 @@ dependencies = [
     "instructor",
     "pydantic>=2.12.0,<3.0.0",
     "ipython",
+    "langgraph-cli[inmem]>=0.4.31",
 ]
 
 [tool.uv]

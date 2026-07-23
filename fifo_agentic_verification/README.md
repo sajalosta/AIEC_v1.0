@@ -1,68 +1,106 @@
-# FIFO Agentic Verification — Pilot
+FIFO Agentic Verification — Master Cheatsheet
+PART 1 · NOTEBOOK
+First time only
+cd ~/DrGreggCourse/code/AIEC_v1.0/fifo_agentic_verification
+uv sync
+Open notebook → select kernel .venv/bin/python
+Run
+Cells top to bottom: imports → config (enter OpenAI key) → contracts → tools → ingest → gate 2 (Enter twice past probes) → orch → gen → run → check → RAGAS → gate 6 → full-run cell (type features)
 
-AI-driven verification of `snix_sync_fifo`: LLM routers dispatch test generation and
-test runs as parallel tool calls, checker agents judge monitor event logs against a
-retrieved rule book (RAG inside the checker), RAGAS scores every verdict's retrieval
-and faithfulness, and a reporter compiles the final report.
 
-## Contents
-- `fifo_agentic_verification.ipynb` — the whole pipeline (LangChain + LangGraph)
-- `hw/` — DUT (`snix_sync_fifo.sv`), plusarg testbench `tb_top.sv` (holds the 9
-  pre-decided test sequences, selected by +TEST=<name>), passive event monitor
-  (`fifo_event_monitor.sv`)
-- `docs/` — test plan (features F1–F10 + tests T1–T9) and rule book R1–R11
-- `logs/`, `build/`, `chroma_store/` — created/filled by the pipeline
 
-## Prerequisites
-- Python 3.10+ with: `pip install langchain langgraph langchain-openai
-  pdfplumber ragas datasets nbformat jupyter langchain-qdrant qdrant-client rank_bm25`
-- Verilator 5.x on PATH (`pip install verilator` gives `verilator-cli`, which the
-  notebook auto-detects; if the binary link step fails, the notebook retries with
-  `make CXX="c++ -fcoroutines"`)
-- An OpenAI API key (prompted on first run). Optional: LANGSMITH_API_KEY for tracing.
 
-## Run
-Open the notebook, run cells top to bottom. The final cells run the full regression
-(all 9 tests) and render the report. To run a subset: `await run_verification(["T3"])`.
+PART 2 · BACKEND (local agent server)
+First time only
+cd agent_server
+uv sync
+Edit agent_server/.env:
+OPENAI_API_KEY=sk-...
+LANGSMITH_API_KEY=lsv2_...
+LANGSMITH_TRACING=true
+LANGSMITH_PROJECT=fifo-agentic-verification
+Every launch
+cd agent_server
+uv run langgraph dev --allow-blocking
+Wait for 🚀 API: http://127.0.0.1:2024
+Confirm: curl http://localhost:2024/ok → {"ok":true}
+(Optional) Test in Studio: open printed studio link → pick fifo_verification → submit {"user_query":"test the full flag"} → runs to report; traces at smith.langchain.com
 
-## Architecture (as specified by the project owner)
-- The USER names the features to test (they own the test plan). The orchestrator
-  (AGENT1) builds ∥ ingests — ingest ingests only — and routes the request onward.
-- **TestGenRouterLLM** determines how many tests are needed and calls that many
-  **TestGenAgents** in min(n, 4) waves. Each TestGenAgent is an LLM with two tools
-  called in sequence: `retrieve_test` (hybrid BM25+semantic over the testplan
-  collection: feature → test_name) then `gen_test` (one-line Verilator compile of
-  the plusarg testbench → binary only). Gen logs go back to the router:
-  pass → run stage, fail → reporter.
-- The same user query also pre-retrieves matching rules into the checkers' context.
-- **Rule retrieval lives inside the checker agent**; a deterministic sanitizer
-  enforces cited rules were actually retrieved. Both BM25 retrievers lowercase.
-- One test = one simulation run (+TEST plusarg) = one log file.
-- Build/ingest failure aborts and surfaces the build log to the user.
-- Temperature 0 everywhere; verdicts binary, reason required on FAIL.
 
-## Validated in advance (no API needed)
-- DUT + harness + separate-module test compile and run under Verilator 5.49
-- PDF parsing yields exactly 9 test specs and 11 rules from the shipped documents
-- Citation-provenance sanitizer and RAGAS row composition covered by the synthetic
-  test cell inside the notebook
 
-## Deliverables & Status (submission)
 
-- **`fifo_final.ipynb`** — the full pipeline, executed end to end: 5-feature and
-  2-feature runs, checker verdicts (incl. catching a deliberately planted reset
-  bug), three RAGAS score tables, and the reporter's final table with trust notes.
-- **`agent_server/`** — the pipeline packaged as a LangGraph server (one module
-  per stage). Proven live: `langgraph dev --allow-blocking` on the laptop,
-  full run driven from LangGraph Studio (orchestrate → generate → run → check
-  → ragas → report, all green).
-- **`frontend/`** — Next.js chat UI, deployed: https://fifo-verification.vercel.app
-  Backend stays on the laptop (RTL/Verilator/documents never leave the machine);
-  Vercel reaches it through a Cloudflare tunnel. The proxy chain is verified
-  end-to-end (`/api/ok` on the Vercel domain answers `{"ok":true}` from the
-  laptop server). Known issue at submission time: the chat's streaming call
-  errors client-side ("Failed to fetch") — under investigation; the same
-  deployed server runs fine when driven via LangGraph Studio / SDK.
-- **Architecture notes** — `FUTURE_FEATURES.md` (production hardening: async
-  wrapping instead of --allow-blocking, auth on the tunnel, named tunnel,
-  RAGAS gating, parallel judge calls).
+PART 3 · FRONTEND — LOCAL
+First time only
+Edit frontend/.env:
+NEXT_PUBLIC_API_URL=http://localhost:3000/api
+LANGGRAPH_API_URL=http://localhost:2024
+chat.tsx apiUrl:
+typescript
+const apiUrl =
+  process.env.NEXT_PUBLIC_LANGGRAPH_API_URL ??
+  (typeof window !== "undefined"
+    ? `${window.location.origin}/api`
+    : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api"));
+route.ts has runtime: "nodejs"
+cd <frontend> → npm install
+Every launch (needs backend from Part 2 running)
+cd <frontend> → npm run dev
+Open http://localhost:3000 → chat
+
+
+
+
+
+PART 4 · FRONTEND — VERCEL (public site, laptop backend)
+First time only
+npm install -g vercel
+vercel login
+cd frontend → vercel (links project fifo-verification)
+Every deploy
+Backend up (Part 2 running) + confirm curl localhost:2024/ok
+Tunnel — new terminal:
+cloudflared tunnel --url http://localhost:2024    ##SajOst this is the cmd with the cloudflare command! 
+## SajOst you need to execute the above cmd to get a cloudflare link which will be used to provide to vercel as a link to your local desktop! 
+Copy the https://….trycloudflare.com URL.
+
+
+24. Set BOTH env vars to the new tunnel URL — before deploying:
+
+vercel env rm NEXT_PUBLIC_LANGGRAPH_API_URL production
+vercel env add NEXT_PUBLIC_LANGGRAPH_API_URL production   # paste tunnel URL this is cloudflare link
+vercel env rm LANGGRAPH_API_URL production
+vercel env add LANGGRAPH_API_URL production               # paste same tunnel URL this is the cloudflare link
+
+
+Deploy:
+cd frontend
+vercel --prod
+Test:
+https://fifo-verification.vercel.app/api/ok → {"ok":true}
+Open site → hard-refresh (Ctrl+Shift+R) → chat
+
+
+
+TROUBLESHOOTING
+
+"Failed to fetch" / HTTP 500 on chat:
+
+curl http://localhost:2024/ok — backend alive?
+Send message, watch server terminal: prints = request arrived (backend issue); silent = never arrived (proxy/tunnel/env issue)
+F12 → Network → click failed row → note URL + Status
+
+Env var changes did nothing: NEXT_PUBLIC_* vars bake in at build → must vercel --prod after changing.
+
+CORS error in console: direct-to-tunnel path needs backend CORS enabled (small server edit — flag me).
+
+
+##don't bother understanding this below. 
+
+RULES
+uv sync / npm install = one-time, not per launch
+--allow-blocking = always
+Two separate venvs: project-root .venv (notebook) vs agent_server/.venv (server) — never cross them
+First ingest needs network (docling OCR model cache); offline after
+Tunnel URL changes every restart → redo step 24 (both vars) + step 25 every time
+LangSmith cloud deploy won't run this backend (needs Verilator + RTL local) — backend stays on your machine, LangSmith only observes
+To kill the per-session tunnel churn: set up a named cloudflared tunnel (permanent URL)

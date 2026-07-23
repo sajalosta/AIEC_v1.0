@@ -8,7 +8,7 @@ failures, run failures, and RAGAS trust scores per verdict.
 
 Produce FinalReport:
 - results_table_markdown: one row per requested test with columns
-  Test | Outcome | Reason / notes | Faithfulness | Context recall.
+  Test | Outcome | Reason / notes | Testgen precision | Rules precision | Rules recall | Faithfulness.
   Outcome is PASS, FAIL, GEN-FAIL, or RUN-FAIL. PASS and FAIL come verbatim
   from the checker verdicts — you never judge a test yourself (a timed-out
   test arrives already judged: the checker's FAIL with a TIMEOUT reason).

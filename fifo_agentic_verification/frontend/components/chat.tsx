@@ -36,9 +36,13 @@ function toolIcon(name?: string) {
 }
 
 export function Chat({ assistantId }: { assistantId: string }) {
-  // Direct-to-backend: the browser streams straight to the laptop's tunnel.
-  // (Vercel proxy bypassed - its edge/node relay broke streaming POSTs.)
-  const apiUrl = "https://designed-bloomberg-rapids-boutique.trycloudflare.com";
+  // Vercel streaming via /api is broken (empty bodies → Failed to fetch).
+  // Prefer NEXT_PUBLIC_LANGGRAPH_API_URL (tunnel) when set; else same-origin /api.
+  const apiUrl =
+    process.env.NEXT_PUBLIC_LANGGRAPH_API_URL ??
+    (typeof window !== "undefined"
+      ? `${window.location.origin}/api`
+      : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api"));
 
   const stream = useStream({ apiUrl, assistantId });
   const { messages, isLoading, error } = stream;
