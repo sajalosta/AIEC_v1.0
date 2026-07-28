@@ -434,14 +434,12 @@ Why does LangSmith deploy your agent as an API backend only, and why do you stil
 #### Answer
 
 Langsmith can only deploy endpoints, not a chat interface. So it deploys as API backend.
-
 The agent takes as input a message from the USER. You need a front end to talk to it. The langgraph STUDIO gives a UI where we can debug the output of the agent and to make sure the backend is behaving okay. BUt this dev version is only for me. I need a front end deployed on vercel so all can talk to it.  
 
 ### Question #2
 
 Why should the LangSmith API key live in a Next.js API route (server-side) instead of in the browser?
 
-#### Answer
 
 The Next.js API route forwards the LANGSMITH API KEY to LANGGRAPH URL. This prevents the browser from seeing it and enables secure key transfer to the backend. Key getting exposed to the browser exposes it to everyone.
 
