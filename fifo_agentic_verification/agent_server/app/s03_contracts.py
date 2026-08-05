@@ -96,7 +96,7 @@ from langgraph.graph.message import add_messages as _add_messages
 
 class PipelineState(TypedDict, total=False):
     messages: _Annotated[list, _add_messages]   # chat frontend channel #the shared state each stage writes its report into.
-    user_query: str                     # the features the user wants tested
+    user_query: str                     # the test names the user wants run
     orchestrator: OrchestratorDecision
     build: BuildReport
     ingest: IngestReport

@@ -1,11 +1,12 @@
 from app.s08_run import *  # noqa: F401,F403
+from app.s05_ingest import debug_fmt_hits  # explicit: star-import omits _-prefixed names
 
 CHECKER_PROMPT = f"""
 You are a hardware verification checker. Today is {TODAY}.
 
 INPUT: one test's event log from a FIFO simulation (produced by a passive
 monitor: pin/flag change events with cycle timestamps, plus [TST] status
-lines), together with the rule-book sections retrieved once for the feature
+lines), together with the rule-book sections retrieved for the feature(s)
 this test covers. You have no tools: judge only from what is given.
 
 METHOD:
@@ -33,7 +34,7 @@ violated rule and the exact log evidence.
 
 checker_agent = create_agent(
     model=checker_llm,
-    tools=[],   # rules arrive with the log — retrieved once, from the feature
+    tools=[],   # rules arrive with the log — retrieved per feature under test
     system_prompt=CHECKER_PROMPT,
     middleware=[
         ModelCallLimitMiddleware(run_limit=CHECKER_MODEL_CALL_LIMIT,
@@ -57,6 +58,67 @@ def sanitize_verdict(verdict: CheckVerdict,
     return verdict.model_copy(update={"citations": kept}), errors
 
 
+FEATURE_SPLIT = re.compile(r"(?=\bF\d+\s*[—-])")
+RULES_PER_FEATURE = 6         # RRF keeps top 6 per feature (dense 3 + BM25 3 fused)
+RULES_RERANK_PER_FEATURE = 2  # cross-encoder keeps top 2 (same slot count as MMR)
+RULES_MMR_PER_FEATURE = 2     # kept for MMR restore
+MAX_RULES = 6                 # cap after merging 2-per-feature across features
+
+
+def split_features(feature_line: str) -> list[str]:
+    """A test's feature line can name several features (T2 covers F2 and F3)."""
+    parts = [p.strip() for p in FEATURE_SPLIT.split(feature_line) if p.strip()]
+    return parts or [feature_line]
+
+
+def rules_for_features(feature_line: str) -> list[dict]:
+    """Per feature: hybrid RRF → cross-encoder rerank → merge/dedupe → cap."""
+    seen: set[str] = set()
+    merged: list[dict] = []
+    # --- DEBUG_RULES_RETRIEVAL (temporary) ---
+    if DEBUG_RULES_RETRIEVAL:
+        print(f"\n=== rules_for_features ===\nfeature_line: {feature_line[:200]}")
+    # -----------------------------------------
+    for feature in split_features(feature_line):
+        dense = dense_retrieve_rules(feature, k=FIRST_STAGE_K_RULES)
+        bm25 = bm25_retrieve_rules(feature, k=FIRST_STAGE_K_RULES)
+        rrf = reciprocal_rank_fusion([dense, bm25], limit=RULES_PER_FEATURE)
+        cands = [{"rule_id": d.metadata.get("rule_id", "?"), "text": d.text,
+                  "score": d.score} for d in rrf]
+        # --- DEBUG_RULES_RETRIEVAL (temporary) ---
+        if DEBUG_RULES_RETRIEVAL:
+            print(f"\n--- feature ---\n{feature[:180]}")
+            print(f"Dense top {FIRST_STAGE_K_RULES}: {debug_fmt_hits(dense)}")
+            print(f"BM25  top {FIRST_STAGE_K_RULES}: {debug_fmt_hits(bm25)}")
+            print(f"RRF   top {RULES_PER_FEATURE}: {debug_fmt_hits(rrf)}")
+        # -----------------------------------------
+        if USE_RULES_RERANK:
+            cands = rerank_select_rules(feature, cands, RULES_RERANK_PER_FEATURE)
+            stage_name, stage_k = "Rerank", RULES_RERANK_PER_FEATURE
+        elif USE_RULES_MMR:
+            cands = mmr_select_rules(feature, cands, RULES_MMR_PER_FEATURE)
+            stage_name, stage_k = "MMR", RULES_MMR_PER_FEATURE
+        else:
+            cands = cands[:RULES_RERANK_PER_FEATURE]
+            stage_name, stage_k = "Top", RULES_RERANK_PER_FEATURE
+        # --- DEBUG_RULES_RETRIEVAL (temporary) ---
+        if DEBUG_RULES_RETRIEVAL:
+            print(f"{stage_name} top {stage_k}: {debug_fmt_hits(cands)}")
+        # -----------------------------------------
+        for rule in cands:
+            rule_id = rule.get("rule_id")
+            if rule_id in seen:
+                continue
+            seen.add(rule_id)
+            merged.append(rule)
+    out = merged[:MAX_RULES]
+    # --- DEBUG_RULES_RETRIEVAL (temporary) ---
+    if DEBUG_RULES_RETRIEVAL:
+        print(f"\nMerged final (cap {MAX_RULES}): {debug_fmt_hits(out)}\n")
+    # -----------------------------------------
+    return out
+
+
 def test_feature(test_name: str) -> str:
     """The feature this test covers, captured when testgen retrieved the test.
     Falls back to the test name itself at the gates (no testgen ran)."""
@@ -73,9 +135,9 @@ async def run_checker(test_name: str) -> CheckRecord:
             errors=["missing log file"],
         )
     log_text = log_path.read_text()
-    # ONE retrieval per test: the feature under test is the query
+    # one retrieval per feature named in the test's feature line
     feature = test_feature(test_name)
-    rules = hybrid_rule_search(feature)
+    rules = rules_for_features(feature)
     rules_block = ("\n\nRule-book sections retrieved for the feature under test:\n"
                    + json.dumps(rules, indent=1))
     try:

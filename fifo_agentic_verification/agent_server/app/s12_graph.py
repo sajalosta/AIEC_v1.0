@@ -13,13 +13,21 @@ def _query_from_state(state: PipelineState) -> str:
 
 
 def _report_markdown(rep: FinalReport) -> str:
-    return "\n\n".join(filter(None, [
-        f"# {getattr(rep, 'title', 'FIFO Regression Report')}",
-        rep.summary,
-        rep.results_table_markdown,
-        rep.failures_detail_markdown,
-        f"**Trust notes:** {rep.trust_notes}" if rep.trust_notes else "",
-    ]))
+    """Human-facing markdown for chat UI (not the raw FinalReport JSON)."""
+    title = getattr(rep, "title", None) or "FIFO Regression Report"
+    parts = [f"# {title}"]
+    if rep.summary:
+        parts += ["", rep.summary.strip()]
+    if rep.results_table_markdown:
+        parts += ["", "## Results", "", rep.results_table_markdown.strip()]
+    detail = (rep.failures_detail_markdown or "").strip()
+    if detail and not detail.lower().startswith("no fail"):
+        parts += ["", "## Failures / review", "", detail]
+    elif detail:
+        parts += ["", f"*{detail}*"]
+    if rep.trust_notes:
+        parts += ["", "## Trust notes", "", rep.trust_notes.strip()]
+    return "\n".join(parts).strip() + "\n"
 
 
 async def orchestrate_node(state: PipelineState, config: RunnableConfig) -> dict:
@@ -39,18 +47,19 @@ def route_after_orchestrate(state: PipelineState) -> Literal["generate", "report
 
 
 async def generate_node(state: PipelineState, config: RunnableConfig) -> dict:
-    request = (state.get("user_query") or "").strip() or "all features"
+    request = (state.get("user_query") or "").strip() or "all tests"
+    TESTGEN_RECORDS.clear()   # kernel-scoped dict: drop prior runs' retrievals
     try:
         result = await testgen_router.ainvoke(
             {"messages": [{"role": "user", "content":
-                f"Features the user wants tested:\n{request}"}]},
+                f"Tests the user wants run:\n{request}"}]},
             config=config,
         )
         report = GenPhaseReport.model_validate(result["structured_response"])
         return {"gen_phase": report}
     except Exception as exc:
         return {"gen_phase": GenPhaseReport(
-                    failed=[GenResult(feature=request, status="fail",
+                    failed=[GenResult(test_name=request, status="fail",
                                       error=f"router: {exc}")]),
                 "errors": state.get("errors", []) + [f"gen: {exc}"]}
 

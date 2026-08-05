@@ -19,7 +19,6 @@ import instructor
 from openai import OpenAI
 from ragas.llms import llm_factory
 from ragas.metrics.collections import (
-    AnswerRelevancy,
     ContextPrecision,
     ContextRecall,
     Faithfulness,
@@ -29,14 +28,33 @@ from ragas.metrics.collections import (
 APPLICABLE_RULES: dict[str, list[str]] = {
     "T1": ["R1"],
     "T2": ["R2", "R6", "R7"],
-    "T3": ["R3", "R4"],
-    "T4": ["R8", "R4", "R2"],
+    "T3": ["R4", "R3"],
+    "T4": ["R8", "R4"],  # R2 is read-path; T4 does not read the FIFO
     "T5": ["R2", "R5", "R6", "R7"],
     "T6": ["R9", "R5"],
     "T7": ["R2", "R3"],
     "T8": ["R10", "R2", "R3"],
     "T9": ["R2", "R5", "R6"],
 }
+
+# Human-readable rule names (from the rule book) for reporting and references.
+RULE_NAMES: dict[str, str] = {
+    "R1": "Reset state",
+    "R2": "FIFO ordering",
+    "R3": "Conservation",
+    "R4": "Full flag",
+    "R5": "Empty flag",
+    "R6": "Read latency",
+    "R7": "Read data holding",
+    "R8": "Blocked write",
+    "R9": "Blocked read",
+    "R10": "Simultaneous read and write",
+    "R11": "Completion",
+}
+
+
+def format_rule(rule_id: str) -> str:
+    return f"{rule_id} — {RULE_NAMES.get(rule_id, 'Unknown rule')}"
 
 
 def build_sync_judge_llm():
@@ -100,13 +118,22 @@ def rules_rows(records: list[CheckRecord]) -> list[dict]:
     rows = []
     for rec in records:
         tname = rec.verdict.test_name
+        gold_rule_ids = APPLICABLE_RULES.get(tname.split("_")[0], [])
+        retrieved_rule_ids = rec.retrieved_rule_ids or []
         rows.append({
             "test_id": tname,
             "user_input": rec.retrieval_query or f"rules applicable to test {tname}",
             "retrieved_contexts": rec.retrieved_chunks or ["(no retrieval)"],
-            "response": "Retrieved rules: " + ", ".join(rec.retrieved_rule_ids or ["none"]),
-            "reference": "Applicable rules: "
-                         + ", ".join(APPLICABLE_RULES.get(tname.split("_")[0], [])),
+            "response": "Retrieved rules: " + ", ".join(retrieved_rule_ids or ["none"]),
+            # One statement per gold rule, phrased as a claim about the
+            # retrieved text so attribution is decidable from the chunks:
+            # the rule book has no test-to-rule mapping to judge against.
+            "reference": " ".join(
+                f"The retrieved rule book sections include {format_rule(r)}."
+                for r in gold_rule_ids
+            ) or "No applicable rules.",
+            "gold_rules": [format_rule(rule_id) for rule_id in gold_rule_ids],
+            "retrieved_rules": [format_rule(rule_id) for rule_id in retrieved_rule_ids],
         })
     return rows
 
@@ -130,12 +157,9 @@ def verdict_rows(records: list[CheckRecord]) -> list[dict]:
 
 async def _score_all(records: list[CheckRecord]) -> dict:
     judge = build_sync_judge_llm()
-    from ragas.embeddings import OpenAIEmbeddings as RagasOpenAIEmbeddings
-    ragas_embeddings = RagasOpenAIEmbeddings(client=OpenAI(), model="text-embedding-3-small")
     cp = ContextPrecision(llm=judge)
     cr = ContextRecall(llm=judge)
     fa = Faithfulness(llm=judge)
-    ar = AnswerRelevancy(llm=judge, embeddings=ragas_embeddings)
 
     async def safe(coro):
         try:
@@ -154,6 +178,9 @@ async def _score_all(records: list[CheckRecord]) -> dict:
             entry = {"test_id": row["test_id"]}
             for metric_name, coro_fn in scorers:
                 entry[metric_name] = await safe(coro_fn(row))
+            if name == "rules_retrieval":
+                entry["gold_rules"] = row["gold_rules"]
+                entry["retrieved_rules"] = row["retrieved_rules"]
             per_test.append(entry)
         table = {"per_test": per_test}
         for metric_name, _ in scorers:
@@ -162,15 +189,12 @@ async def _score_all(records: list[CheckRecord]) -> dict:
                 table[f"{metric_name}_mean"] = round(sum(vals) / len(vals), 4)
         summary[name] = table
 
-    #retrieval_scorers = [
-    #    ("context_precision", lambda r: cp.ascore(
-    #        user_input=r["user_input"], reference=r["reference"],
-    #        retrieved_contexts=r["retrieved_contexts"])),
-    #    ("context_recall", lambda r: cr.ascore(
-    #        user_input=r["user_input"], retrieved_contexts=r["retrieved_contexts"],
-    #        reference=r["reference"])),
-    #]
- 
+    # Testgen: recall only (k=1 — precision is redundant).
+    testgen_scorers = [
+        ("context_recall", lambda r: cr.ascore(
+            user_input=r["user_input"], retrieved_contexts=r["retrieved_contexts"],
+            reference=r["reference"])),
+    ]
     rules_scorers = [
         ("context_precision", lambda r: cp.ascore(
             user_input=r["user_input"], reference=r["reference"],
@@ -179,18 +203,10 @@ async def _score_all(records: list[CheckRecord]) -> dict:
             user_input=r["user_input"], retrieved_contexts=r["retrieved_contexts"],
             reference=r["reference"])),
     ]
-    testgen_scorers = [
-        ("context_precision", lambda r: cp.ascore(
-            user_input=r["user_input"], reference=r["reference"],
-            retrieved_contexts=r["retrieved_contexts"])),
-    ]
-
     verdict_scorers = [
         ("faithfulness", lambda r: fa.ascore(
             user_input=r["user_input"], response=r["response"],
             retrieved_contexts=r["retrieved_contexts"])),
-        ("answer_relevancy", lambda r: ar.ascore(
-            user_input=r["user_input"], response=r["response"])),
     ]
 
     await score_table("testgen_retrieval", testgen_rows(), testgen_scorers)
@@ -202,6 +218,41 @@ async def _score_all(records: list[CheckRecord]) -> dict:
     return summary
 
 
+RULES_RECALL_LOG = PROJECT_DIR / "rules_context_recall.jsonl"
+
+
+def record_rules_recall(summary: dict) -> Path | None:
+    """Append this run's rules gold/retrieved/recall to rules_context_recall.jsonl."""
+    table = summary.get("rules_retrieval") or {}
+    if "per_test" not in table:
+        return None
+    from datetime import datetime, timezone
+    rows = []
+    for r in table["per_test"]:
+        gold = list(r.get("gold_rules") or [])
+        retrieved = list(r.get("retrieved_rules") or [])
+        gold_set, ret_set = set(gold), set(retrieved)
+        rows.append({
+            "test_id": r["test_id"],
+            "gold_rules": gold,
+            "retrieved_rules": retrieved,
+            "missing_rules": [g for g in gold if g not in ret_set],
+            "extra_rules": [x for x in retrieved if x not in gold_set],
+            "context_recall": r.get("context_recall"),
+            "context_precision": r.get("context_precision"),
+        })
+    entry = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "per_test": rows,
+        "context_recall_mean": table.get("context_recall_mean"),
+        "context_precision_mean": table.get("context_precision_mean"),
+    }
+    with RULES_RECALL_LOG.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(entry) + "\n")
+    print(f"rules recall log -> {RULES_RECALL_LOG}")
+    return RULES_RECALL_LOG
+
+
 def run_ragas(records: list[CheckRecord]) -> dict:
     """One RAGAS stage, three scorings. Returns a summary dict; never raises."""
     try:
@@ -209,6 +260,7 @@ def run_ragas(records: list[CheckRecord]) -> dict:
         for name in ("testgen_retrieval", "rules_retrieval", "verdicts"):
             print(f"--- {name} ---")
             print(json.dumps(summary.get(name, {}), indent=1))
+        record_rules_recall(summary)
         return summary
     except Exception as exc:
         return {"error": f"RAGAS did not complete: {type(exc).__name__}: {exc}"}

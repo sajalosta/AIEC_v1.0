@@ -18,8 +18,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ReportCard } from "@/components/report-card";
 import { cn } from "@/lib/utils";
 import { getMessageText, toolLabel } from "@/lib/messages";
+import { tryParseReport } from "@/lib/report";
 
 type StreamMessage = ReturnType<typeof useStream>["messages"][number];
 
@@ -96,7 +98,7 @@ export function Chat({ assistantId }: { assistantId: string }) {
             </div>
           )}
 
-          {messages.map((message, i) => (
+          {dedupeReportMessages(messages).map((message, i) => (
             <MessageRow key={message.id ?? i} message={message} />
           ))}
 
@@ -145,10 +147,35 @@ export function Chat({ assistantId }: { assistantId: string }) {
   );
 }
 
+/** Prefer the rendered markdown report over a preceding raw FinalReport JSON twin. */
+function dedupeReportMessages(messages: StreamMessage[]): StreamMessage[] {
+  const out: StreamMessage[] = [];
+  for (let i = 0; i < messages.length; i += 1) {
+    const cur = messages[i];
+    const curText = getMessageText(cur.content);
+    const curReport = tryParseReport(curText);
+    const next = messages[i + 1];
+    if (curReport && next && cur.type !== "human" && cur.type !== "tool") {
+      const nextReport = tryParseReport(getMessageText(next.content));
+      if (
+        nextReport &&
+        next.type !== "human" &&
+        next.type !== "tool" &&
+        nextReport.title === curReport.title
+      ) {
+        continue;
+      }
+    }
+    out.push(cur);
+  }
+  return out;
+}
+
 function MessageRow({ message }: { message: StreamMessage }) {
   const isHuman = message.type === "human";
   const isTool = message.type === "tool";
   const text = getMessageText(message.content);
+  const report = !isHuman && !isTool ? tryParseReport(text) : null;
   const toolCalls =
     message.type === "ai"
       ? (message as unknown as {
@@ -158,7 +185,7 @@ function MessageRow({ message }: { message: StreamMessage }) {
 
   if (isTool) {
     return (
-      <div className="mx-auto w-full max-w-3xl">
+      <div className="w-full">
         <details className="group rounded-lg border bg-muted/40 text-sm">
           <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-muted-foreground">
             {toolIcon(message.name)}
@@ -171,6 +198,14 @@ function MessageRow({ message }: { message: StreamMessage }) {
             {text}
           </pre>
         </details>
+      </div>
+    );
+  }
+
+  if (report) {
+    return (
+      <div className="w-full">
+        <ReportCard report={report} />
       </div>
     );
   }
@@ -192,7 +227,12 @@ function MessageRow({ message }: { message: StreamMessage }) {
         </AvatarFallback>
       </Avatar>
 
-      <div className={cn("flex max-w-[80%] flex-col gap-2", isHuman && "items-end")}>
+      <div
+        className={cn(
+          "flex max-w-[80%] flex-col gap-2",
+          isHuman && "items-end"
+        )}
+      >
         {toolCalls.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {toolCalls.map((tc, idx) => (
@@ -229,9 +269,14 @@ function ThinkingRow() {
           <Bot className="size-4" />
         </AvatarFallback>
       </Avatar>
-      <div className="flex items-center gap-2 rounded-2xl bg-muted px-4 py-3 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-        Thinking...
+      <div className="flex flex-col gap-1 rounded-2xl bg-muted px-4 py-3 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <Loader2 className="size-4 animate-spin" />
+          Working… (build / ingest can take 1–3 min)
+        </div>
+        <p className="text-xs">
+          Keep this tab open. If this never clears, hard-refresh and check LangGraph is on :2024.
+        </p>
       </div>
     </div>
   );

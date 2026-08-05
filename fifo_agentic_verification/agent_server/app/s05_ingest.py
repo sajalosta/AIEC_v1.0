@@ -112,6 +112,16 @@ def tokenize(text: str) -> list[str]:
 
 
 FIRST_STAGE_K = 2
+FIRST_STAGE_K_RULES = 3
+# Post-RRF stage: cross-encoder rerank (active). MMR kept for restore.
+USE_RULES_RERANK = True
+USE_RULES_MMR = False          # restore: True + USE_RULES_RERANK = False
+RULES_MMR_LAMBDA_MULT = 0.75   # kept for MMR restore
+RULES_RERANK_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+_RULES_CROSS_ENCODER = None    # lazy-loaded on first rerank
+# --- DEBUG_RULES_RETRIEVAL (temporary; set False or delete helper + prints to remove) ---
+DEBUG_RULES_RETRIEVAL = False
+# -------------------------------------------------------------------------------
 
 TP_CHILDREN: list[Document] = []
 RB_CHILDREN: list[Document] = []
@@ -182,9 +192,64 @@ def dense_retrieve_testplan(question: str, k: int = 2) -> list[RetrievedDocument
     return [as_retrieved_document(document, score) for document, score in matches]
 
 
-def dense_retrieve_rules(question: str, k: int = 2) -> list[RetrievedDocument]:
+def dense_retrieve_rules(question: str, k: int = 3) -> list[RetrievedDocument]:
     matches = RB_STORE.similarity_search_with_score(question, k=k)
     return [as_retrieved_document(document, score) for document, score in matches]
+
+
+def mmr_select_rules(query: str, rules: list[dict], k: int) -> list[dict]:
+    """Diversify a per-feature RRF list (MMR). Kept for restore; inactive while rerank is on."""
+    if not rules or len(rules) <= k or not USE_RULES_MMR:
+        return rules[:k]
+    from langchain_community.vectorstores.utils import maximal_marginal_relevance
+    import numpy as np
+    texts = [r.get("text") or "" for r in rules]
+    query_emb = np.array(embeddings.embed_query(query))
+    doc_embs = embeddings.embed_documents(texts)
+    idxs = maximal_marginal_relevance(
+        query_emb, doc_embs, lambda_mult=RULES_MMR_LAMBDA_MULT, k=k,
+    )
+    return [rules[i] for i in idxs]
+
+
+def _rules_cross_encoder():
+    """Lazy-load the cross-encoder (~270MB download on first use)."""
+    global _RULES_CROSS_ENCODER
+    if _RULES_CROSS_ENCODER is None:
+        from sentence_transformers import CrossEncoder
+        _RULES_CROSS_ENCODER = CrossEncoder(RULES_RERANK_MODEL)
+    return _RULES_CROSS_ENCODER
+
+
+def rerank_select_rules(query: str, rules: list[dict], k: int) -> list[dict]:
+    """Cross-encoder rerank of a per-feature RRF list (replaces MMR for now)."""
+    if not rules or len(rules) <= k or not USE_RULES_RERANK:
+        return rules[:k]
+    pairs = [[query, r.get("text") or ""] for r in rules]
+    scores = _rules_cross_encoder().predict(pairs)
+    ranked = sorted(
+        zip(scores, rules), key=lambda x: float(x[0]), reverse=True,
+    )
+    out = []
+    for score, rule in ranked[:k]:
+        row = dict(rule)
+        row["score"] = float(score)
+        out.append(row)
+    return out
+
+
+# --- DEBUG_RULES_RETRIEVAL helper (temporary; remove with the flag above) ---
+def debug_fmt_hits(docs) -> str:
+    parts = []
+    for i, d in enumerate(docs, start=1):
+        rid = d.metadata.get("rule_id", "?") if hasattr(d, "metadata") else d.get("rule_id", "?")
+        score = d.score if hasattr(d, "score") else d.get("score")
+        if score is None:
+            parts.append(f"#{i} {rid}")
+        else:
+            parts.append(f"#{i} {rid} ({float(score):.4f})")
+    return "  ".join(parts) if parts else "(none)"
+# -------------------------------------------------------------------------------
 
 
 def bm25_retrieve_testplan(question: str, k: int = 2) -> list[RetrievedDocument]:
@@ -193,7 +258,7 @@ def bm25_retrieve_testplan(question: str, k: int = 2) -> list[RetrievedDocument]
     return [as_retrieved_document(TP_CHILDREN[i], float(scores[i])) for i in ranked[:k]]
 
 
-def bm25_retrieve_rules(question: str, k: int = 2) -> list[RetrievedDocument]:
+def bm25_retrieve_rules(question: str, k: int = 3) -> list[RetrievedDocument]:
     scores = RB_BM25.get_scores(tokenize(question))
     ranked = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)
     return [as_retrieved_document(RB_CHILDREN[i], float(scores[i])) for i in ranked[:k]]
@@ -230,15 +295,15 @@ def hybrid_testplan_retrieve(question: str, k: int = 1) -> list[RetrievedDocumen
     )
 
 
-def hybrid_rules_retrieve(question: str, k: int = 2) -> list[RetrievedDocument]:
+def hybrid_rules_retrieve(question: str, k: int = 3) -> list[RetrievedDocument]:
     return reciprocal_rank_fusion(
-        [dense_retrieve_rules(question, k=FIRST_STAGE_K),
-         bm25_retrieve_rules(question, k=FIRST_STAGE_K)],
+        [dense_retrieve_rules(question, k=FIRST_STAGE_K_RULES),
+         bm25_retrieve_rules(question, k=FIRST_STAGE_K_RULES)],
         limit=k,
     )
 
 
-def hybrid_rule_search(query: str, k: int = 2) -> list[dict]:
+def hybrid_rule_search(query: str, k: int = 3) -> list[dict]:
     """Query-seeded rules and the retrieve_rules tool share this."""
     return [{"rule_id": d.metadata.get("rule_id", "?"), "text": d.text}
             for d in hybrid_rules_retrieve(query, k=k)]
@@ -275,6 +340,35 @@ def retrieve_test(feature_query: str) -> str:
         "response": test_name,
     }
     return json.dumps({"test_name": test_name, "feature": spec.feature}, indent=1)
+
+
+@tool(
+    "retrieve_test_by_name",
+    description=(
+        "Look up one test in the ingested test plan by name (T3, fill_sixteen "
+        "or T3_fill_sixteen). Returns its full test_name and feature line."
+    ),
+)
+def retrieve_test_by_name(test_name: str) -> str:
+    wanted = sanitize_name(test_name)
+    test_id = wanted.split("_")[0]
+    hit = next((d for d in TP_CHILDREN if d.metadata["test_id"] == test_id), None)
+    if hit is None:
+        return json.dumps({})
+    m = hit.metadata
+    fm = re.search(r"Feature under test:\s*(.+?)(?:Description:|$)",
+                   hit.page_content, re.DOTALL)
+    spec = TestSpec(test_id=m["test_id"], name=m["name"],
+                    feature=" ".join(fm.group(1).split()) if fm else "",
+                    stimulus="")
+    full_name = f"{spec.test_id}_{spec.name}"
+    TESTGEN_RECORDS[full_name] = {   # side channel: RAGAS scores this lookup
+        "user_input": test_name,
+        "feature": spec.feature,
+        "retrieved_contexts": [hit.page_content],
+        "response": full_name,
+    }
+    return json.dumps({"test_name": full_name, "feature": spec.feature}, indent=1)
 
 
 @tool(
